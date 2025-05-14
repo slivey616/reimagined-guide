@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>英语拼读练习</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #f5f5f7;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 18px;
+            padding: 40px;
+            width: 800px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            position: relative;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+
+        .front, .back {
+            backface-visibility: hidden;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        .back {
+            transform: rotateY(180deg);
+        }
+
+        .flipped {
+            transform: rotateY(180deg);
+        }
+
+        .word {
+            font-family: Arial;
+            font-size: 72px;
+            text-align: center;
+            cursor: pointer;
+            margin: 20px 0;
+        }
+
+        .phonetic {
+            font-family: 'Times New Roman';
+            font-size: 32px;
+            text-align: center;
+            color: #666;
+        }
+
+        .meaning {
+            font-family: '微软雅黑';
+            font-size: 32px;
+            text-align: center;
+            margin: 20px 0;
+            color: #333;
+        }
+
+        .syllable-container {
+            background: #f8f9fa;
+            border-radius: 16px;
+            padding: 30px;
+            margin: 20px 0;
+        }
+
+        .line {
+            border-bottom: 2px solid #0071e3;
+            margin: 20px auto;
+            width: 80%;
+        }
+
+        .syllables {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .syllable {
+            background: #ffffff;
+            border: 2px solid #0071e3;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-family: Arial;
+            font-size: 36px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .selected-syllables {
+            min-height: 60px;
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            background: #0071e3;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            padding: 12px 30px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #0077ed;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .shake {
+            animation: shake 0.5s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .example {
+            font-size: 24px;
+            text-align: center;
+            padding: 30px;
+        }
+
+        #fileInput {
+            margin: 20px;
+        }
+    </style>
+</head>
+<body>
+    <input type="file" id="fileInput" accept=".txt">
+    <div class="container">
+        <div class="front">
+            <div class="word" onclick="toggleSyllables()" ondblclick="flipCard()"></div>
+            <div class="phonetic"></div>
+            <button onclick="speakWord()">🔊 发音</button>
+            <div class="meaning"></div>
+            <div class="syllable-container">
+                <div class="selected-syllables"></div>
+                <div class="line"></div>
+                <div class="syllables"></div>
+            </div>
+        </div>
+        <div class="back" onclick="flipCard()">
+            <div class="example"></div>
+        </div>
+    </div>
+    <button onclick="nextWord()">下一页</button>
+
+    <script>
+        const predefinedWords = [
+            { word: 'grab', syllables: ['grab'], meaning: '抓住', example: 'He tried to grab the opportunity.' },
+            { word: 'program', syllables: ['pro','gram'], meaning: '程序', example: 'This program helps students learn coding.' },
+            { word: 'dub', syllables: ['dub'], meaning: '配音', example: 'They will dub the movie into Spanish.' },
+            { word: 'suicide', syllables: ['sui','cide'], meaning: '自杀', example: 'The novel discusses teen suicide.' },
+            { word: 'catalog', syllables: ['cat','a','log'], meaning: '目录', example: 'Check the catalog for availability.' },
+            { word: 'original', syllables: ['o','rig','i','nal'], meaning: '原始的', example: 'This is the original version.' },
+            { word: 'mysterious', syllables: ['mys','te','ri','ous'], meaning: '神秘的', example: 'A mysterious light appeared.' },
+            { word: 'yearn', syllables: ['yearn'], meaning: '渴望', example: 'I yearn for peaceful days.' },
+            { word: 'comprehend', syllables: ['com','pre','hend'], meaning: '理解', example: 'It\'s hard to comprehend this theory.' },
+            { word: 'interpretation', syllables: ['in','ter','pre','ta','tion'], meaning: '解释', example: 'Your interpretation is interesting.' },
+            { word: 'provocative', syllables: ['pro','voc','a','tive'], meaning: '挑衅的', example: 'She made a provocative remark.' },
+            { word: 'analyze', syllables: ['an','a','lyze'], meaning: '分析', example: 'We need to analyze the data.' },
+            { word: 'preparation', syllables: ['prep','a','ra','tion'], meaning: '准备', example: 'Good preparation is essential.' },
+            { word: 'reluctant', syllables: ['re','luc','tant'], meaning: '不情愿的', example: 'He was reluctant to join us.' },
+            { word: 'instinct', syllables: ['in','stinct'], meaning: '本能', example: 'Animals act on instinct.' }
+        ];
+
+        let currentWordIndex = 0;
+        let words = [...predefinedWords];
+        let synth = window.speechSynthesis;
+        
+        function init() {
+            loadWord(currentWordIndex);
+            setupFileInput();
+        }
+
+        function setupFileInput() {
+            document.getElementById('fileInput').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const customWords = e.target.result.split('\n').map(line => {
+                        const parts = line.trim().split(',');
+                        return { 
+                            word: parts[0], 
+                            syllables: parts[1].split('-'), 
+                            meaning: parts[2],
+                            example: parts[3] || '' 
+                        };
+                    });
+                    words = [...customWords, ...predefinedWords];
+                    currentWordIndex = 0;
+                    loadWord(currentWordIndex);
+                };
+                reader.readAsText(file);
+            });
+        }
+
+        function loadWord(index) {
+            const wordObj = words[index];
+            document.querySelector('.word').textContent = wordObj.word;
+            document.querySelector('.meaning').textContent = wordObj.meaning;
+            document.querySelector('.example').textContent = wordObj.example;
+            createSyllables(wordObj.syllables);
+        }
+
+        function createSyllables(syllables) {
+            const container = document.querySelector('.syllables');
+            container.innerHTML = '';
+            syllables.sort(() => Math.random() - 0.5).forEach(syllable => {
+                const div = document.createElement('div');
+                div.className = 'syllable';
+                div.textContent = syllable;
+                div.onclick = () => selectSyllable(div);
+                container.appendChild(div);
+            });
+            document.querySelector('.selected-syllables').innerHTML = '';
+        }
+
+        function selectSyllable(element) {
+            const selected = document.querySelector('.selected-syllables');
+            if (element.parentElement === selected) {
+                element.remove();
+                document.querySelector('.syllables').appendChild(element);
+            } else {
+                selected.appendChild(element);
+            }
+            checkAnswer();
+        }
+
+        function checkAnswer() {
+            const selected = [...document.querySelectorAll('.selected-syllables .syllable')];
+            const answer = selected.map(s => s.textContent).join('');
+            if (answer === words[currentWordIndex].word.toLowerCase()) {
+                selected.forEach(s => s.remove());
+                document.querySelector('.syllables').classList.add('hidden');
+                setTimeout(() => document.querySelector('.word').click(), 500);
+            }
+        }
+
+        function toggleSyllables() {
+            const wordDiv = document.querySelector('.word');
+            const syllables = words[currentWordIndex].syllables;
+            wordDiv.innerHTML = syllables.join('·');
+        }
+
+        function speakWord() {
+            const utterance = new SpeechSynthesisUtterance(words[currentWordIndex].word);
+            utterance.lang = 'en-US';
+            synth.speak(utterance);
+        }
+
+        function nextWord() {
+            currentWordIndex = (currentWordIndex + 1) % words.length;
+            loadWord(currentWordIndex);
+            document.querySelector('.syllables').classList.remove('hidden');
+        }
+
+        function flipCard() {
+            document.querySelector('.container').classList.toggle('flipped');
+        }
+
+        init();
+    </script>
+</body>
+</html>
